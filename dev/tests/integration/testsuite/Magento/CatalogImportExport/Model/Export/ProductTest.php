@@ -9,7 +9,6 @@ declare(strict_types = 1);
 namespace Magento\CatalogImportExport\Model\Export;
 
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\Catalog\Observer\SwitchPriceAttributeScopeOnConfigChange;
 use Magento\Framework\App\Config\ReinitableConfigInterface;
 
 /**
@@ -42,8 +41,6 @@ class ProductTest extends \PHPUnit\Framework\TestCase
     private $productRepository;
 
     /**
-     * Stock item attributes which must be exported
-     *
      * @var array
      */
     public static $stockItemAttributes = [
@@ -132,7 +129,9 @@ class ProductTest extends \PHPUnit\Framework\TestCase
         $attribute = $eavConfig->getAttribute(\Magento\Catalog\Model\Product::ENTITY, 'text_attribute');
         $attribute->setDefaultValue($attributeData);
         /** @var \Magento\Catalog\Api\ProductAttributeRepositoryInterface $productAttributeRepository */
-        $productAttributeRepository = $objectManager->get(\Magento\Catalog\Api\ProductAttributeRepositoryInterface::class);
+        $productAttributeRepository = $objectManager->get(
+            \Magento\Catalog\Api\ProductAttributeRepositoryInterface::class
+        );
         $productAttributeRepository->save($attribute);
         $product->setCustomAttribute('text_attribute', $attribute->getDefaultValue());
         $productRepository->save($product);
@@ -154,14 +153,14 @@ class ProductTest extends \PHPUnit\Framework\TestCase
     {
         return [
             'json' => [
-                '{"type": "basic", "unit": "inch", "sign": "(\")", "size": "1.5\""}',
-                '"text_attribute={""type"": ""basic"", ""unit"": ""inch"", ""sign"": ""(\"")"", ""size"": ""1.5\""""}"'
+                '{"type": "basic", "unit": "inch", "sign": "(")", "size": "1.5""}',
+                '"text_attribute={""type"": ""basic"", ""unit"": ""inch"", ""sign"": ""("")"", ""size"": ""1.5""""}"'
             ],
             'markup' => [
                 '<div data-content>Element type is basic, measured in inches ' .
-                '(marked with sign (\")) with size 1.5\", mid-price range</div>',
+                '(marked with sign (")) with size 1.5", mid-price range</div>',
                 '"text_attribute=<div data-content>Element type is basic, measured in inches ' .
-                '(marked with sign (\"")) with size 1.5\"", mid-price range</div>"'
+                '(marked with sign ("")) with size 1.5"", mid-price range</div>"'
             ],
         ];
     }
@@ -582,8 +581,6 @@ class ProductTest extends \PHPUnit\Framework\TestCase
         /** @var \Magento\Store\Model\Store $store */
         $store = $this->objectManager->create(\Magento\Store\Model\Store::class);
         $reinitiableConfig = $this->objectManager->get(ReinitableConfigInterface::class);
-        $observer = $this->objectManager->get(\Magento\Framework\Event\Observer::class);
-        $switchPriceScope = $this->objectManager->get(SwitchPriceAttributeScopeOnConfigChange::class);
         /** @var \Magento\Catalog\Model\Product\Action $productAction */
         $productAction = $this->objectManager->create(\Magento\Catalog\Model\Product\Action::class);
         /** @var \Magento\Framework\File\Csv $csv */
@@ -600,14 +597,13 @@ class ProductTest extends \PHPUnit\Framework\TestCase
         );
 
         $reinitiableConfig->setValue('catalog/price/scope', \Magento\Store\Model\Store::PRICE_SCOPE_WEBSITE);
-        $switchPriceScope->execute($observer);
 
         $product = $this->productRepository->get('simple');
         $productId = $product->getId();
         $productAction->updateWebsites([$productId], [$secondStore->getWebsiteId()], 'add');
         $product->setStoreId($secondStore->getId());
         $product->setPrice('9.99');
-        $product->getResource()->save($product);
+        $this->productRepository->save($product);
 
         $exportData = $this->model->export();
 
@@ -625,7 +621,6 @@ class ProductTest extends \PHPUnit\Framework\TestCase
         self::assertSame($expectedData, $pricesData);
 
         $reinitiableConfig->setValue('catalog/price/scope', \Magento\Store\Model\Store::PRICE_SCOPE_GLOBAL);
-        $switchPriceScope->execute($observer);
     }
 
     /**
