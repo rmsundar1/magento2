@@ -1,0 +1,49 @@
+// .devcontainer/devcontainer.json
+{
+  "name": "Magento 2.4.6 with PHP 8.1, RabbitMQ, Elasticsearch, and MailHog",
+  "image": "magento/magento-cloud-docker-php:8.1-1.2.2",
+  "extensions": [],
+  "mounts": [
+    "source=/var/www/html,target=/workspace,type=bind,consistency=cached",
+    "source=/path/to/ssh/key,target=/root/.ssh/id_rsa,type=bind,consistency=cached",
+    "source=magento-rabbitmq,target=/etc/rabbitmq,type=bind",
+    "source=magento-elasticsearch,target=/usr/share/elasticsearch/config,type=bind",
+    "source=magento-mailhog,target=/etc/mailhog,type=bind"
+  ],
+  "forwardPorts": [80, 443, 15672, 9200, 8025],
+  "postCreateCommand": "docker-php-ext-install bcmath pdo_mysql opcache && pecl install xdebug && docker-php-ext-enable xdebug",
+  "remoteUser": "root",
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "php.validate.executablePath": "/usr/local/bin/php"
+  },
+  "shutdownAction": "stop",
+  "services": {
+    "mysql": {
+      "image": "mysql:8.0",
+      "env": {
+        "MYSQL_ROOT_PASSWORD": "root",
+        "MYSQL_DATABASE": "magento",
+        "MYSQL_USER": "magento",
+        "MYSQL_PASSWORD": "magento"
+      },
+      "ports": ["3306:3306"],
+      "options": "--health-cmd='mysqladmin ping --silent' --health-interval=10s --health-timeout=5s --health-retries=3"
+    },
+    "rabbitmq": {
+      "image": "rabbitmq:3-management",
+      "ports": ["15672:15672"],
+      "options": "--health-cmd='rabbitmqctl ping' --health-interval=10s --health-timeout=5s --health-retries=3"
+    },
+    "elasticsearch": {
+      "image": "elasticsearch:7.13.4",
+      "ports": ["9200:9200"],
+      "options": "--health-cmd='curl --silent --fail localhost:9200/_cluster/health' --health-interval=10s --health-timeout=5s --health-retries=3"
+    },
+    "mailhog": {
+      "image": "mailhog/mailhog",
+      "ports": ["8025:8025"],
+      "options": "--health-cmd='wget --quiet --tries=1 --spider http://localhost:8025/' --health-interval=10s --health-timeout=5s --health-retries=3"
+    }
+  }
+}
